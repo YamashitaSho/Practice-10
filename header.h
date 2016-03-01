@@ -102,7 +102,7 @@ void error_message(int err);
 //server.c
 int server_main();
 int server_setup(int *listening_socket);
-void connection_number(threadinfo_t *thread);
+void connection_number();
 void connect_thread(threadinfo_t *thread);
 int server_receive_transmission(int socketid);
 int receive_filename(int socketid, char *filename);
