@@ -9,10 +9,6 @@ main.cで行う機能
 エラー表示
 終了
 */
-#include "config.c"
-#include "server.c"
-#include "client.c"
-
 config_t config;
 config_t *cfg = &config;
 
@@ -25,7 +21,7 @@ int main(int argc, char *argv[]){
     if ( mode.server != 0 ){
         error_message(server_main());               //サーバーモードへ
     } else if ( mode.client != 0 ){
-        error_message(client_main(0));               //クライアントモードへ
+        error_message(client_main(0));               //クライアントモードへ(引数はデバッグ用)
     }
     return 0;
 }

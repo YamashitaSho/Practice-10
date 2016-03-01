@@ -26,7 +26,7 @@
 #define CONFIG_SYMBOL_MAXC "max_connection"
 #define DEFAULT_PORT "8888"
 #define CONNECT_MAX 10                  //デフォルト最大接続数
-#define CONNECT_MAXMAX 1000               //最大最大接続数
+#define CONNECT_MAXMAX 100               //最大最大接続数
 #define CONNECT_MAXMIN 1                  //最小最大接続数
 #define FILESIZEMAX 100000
 #define FILESIZE_LENGTH 9               //ヘッダにおけるファイルサイズの桁数
@@ -54,6 +54,7 @@
 #define ERROR_CONNECT 2008              //接続エラー
 #define ERROR_HOST_UNKNOWN 2009         //ホスト名が解決できない
 #define CONFIG_NOTFOUND 2010            //コンフィグファイルがない
+#define ERROR_RECEIVE_NAME 2010         //ファイル名が受信できない
 
 #define ERROR_FILENOTFOUND 3001         //ファイルが見つからない
 

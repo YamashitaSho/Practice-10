@@ -146,7 +146,10 @@ int server_receive_transmission(int socketid){
      memset(filedata,'\0',FILESIZEMAX);
      memset(filename,'\0',256);
      
-     error_message( receive_filename(socketid , filename) );
+     if ( receive_filename(socketid , filename) == ERROR_RECEIVE_NAME){
+          return NO_ERROR;
+     }
+     printf("aaaiueoaaaiueo\n");
      error_message( transmission_filedata(socketid , filename, filedata) );
      
      return NO_ERROR;
@@ -163,6 +166,11 @@ int receive_filename(int socketid, char *filename){
           strncat(buf , &bufc , 1);
           read(socketid , &bufc , 1);
      } while ( bufc != '\0' );
+     
+     if ( buf[0]== '\0' ){
+          printf("ファイル名の受信エラーです。\n");
+          return ERROR_RECEIVE_NAME;
+     }
      printf("受信しました。>>%s\n",buf);
      strcpy(filename,"root/");
      strncat(filename,buf,250);
