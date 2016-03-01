@@ -24,15 +24,13 @@ int client_main(int debugmode){
                 printf("接続先が登録されていません。\nEnterキーでメニューに戻ります。\n");
                 fflush(stdin);
                 getc(stdin);
-                mode = get_menu();
                 continue;
             }
             err = client_receive_transmission(cfg);
             if ( err == ERROR_CONNECT ){
-                printf("サーバに接続できませんでした。\n接続先の受信プログラムが起動していない可能性があります。\nEnterキーでもう一度接続を試みます。\n");
+                printf("サーバに接続できませんでした。\n接続先の受信プログラムが起動していない可能性があります。\nEnterキーでメニューに戻ります。\n");
                 fflush(stdin);
                 getc(stdin);
-                mode = get_menu();
                 continue;
             }
             if ( err == 503 ){
@@ -51,7 +49,7 @@ int client_main(int debugmode){
         } else if ( mode == CLIENT_EXIT ){      //終了
             exit(0);
         }
-        mode = get_menu();
+        mode = get_menu();                      //モード選択
     }
     return NO_ERROR;
 }
@@ -151,14 +149,14 @@ int address_resolution(struct in_addr *servhost){
     hint.ai_flags = 0;
     hint.ai_protocol = 0;
     
-    if ( getaddrinfo(cfg->host,NULL,&hint,&result) != 0 ) {
+    if ( getaddrinfo(cfg->host, NULL, &hint, &result) != 0 ) {
         return 0;
     }
     servhost->s_addr=((struct sockaddr_in *)(result->ai_addr))->sin_addr.s_addr;
     freeaddrinfo(result);
     return 1;
 }
-//ステータス受信
+//ステータスをlength長受信
 int receive_status(FILE *fp, int length){
     int index = 0;
     int readsize = 0;
@@ -230,22 +228,23 @@ int receive_filedata(FILE *receive_fp, char *receive_data, int filesize, char *f
     } while (index != filesize);
     printf("%dバイト受信しました。\n", filesize);
     
-    dir_make(SAVE_DIRECTORY);
+    dir_make(SAVE_DIRECTORY);                   //SAVE_DIRECTORYフォルダがあるかどうか確認し、なければ作っておく
     //保存ファイル名の決定
-    sprintf(filename_dir,"%s/%s",dir,filename);
-    save_fp = fopen(filename_dir, "r+");
-    if ( save_fp != NULL ){                                     //すでにfilename_dirが存在している
-        do{
+    sprintf(filename_dir,"%s/%s",dir,filename); 
+    save_fp = fopen(filename_dir, "r");         //とりあえずdir/filenameを開いてみる
+    
+    if ( save_fp != NULL ){                     //すでにdir/filenameが存在している
+        do{                                     //dir/filename_name(i).extensionを開く
             fclose(save_fp);
-            sprintf(filename_dir, "%s/%s(%d)%s", dir, filename_name, i, extension);   //新しいファイル名(失敗回数)
-            save_fp = fopen(filename_dir, "r+");
+            sprintf(filename_dir, "%s/%s(%d)%s", dir, filename_name, i, extension);
+            save_fp = fopen(filename_dir, "r");
             i++;
         } while ( save_fp != NULL);
         printf("重複ファイルがありました\n");
     }
-    fclose(save_fp);
+    fclose(save_fp);                            //ファイル名が確定したので読み込みモードでは閉じる
     
-    save_fp=fopen(filename_dir,"w");
+    save_fp = fopen(filename_dir,"w");
     fwrite(receive_data, filesize, 1, save_fp);
     printf("%sに保存しました。", filename_dir);
     fclose(save_fp);

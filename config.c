@@ -25,7 +25,7 @@ int config_load(){
         config_param(configfile, CONFIG_SYMBOL_MAXC);
     }
     if ( (cfg->max_connection < CONNECT_MAXMIN) || (cfg->max_connection > CONNECT_MAXMAX) ){
-        printf("最大接続数は1から1000の範囲で設定してください。\n最大接続数:%dに再設定しました。\n", CONNECT_MAX);
+        printf("最大接続数は%dから%dの範囲で設定してください。\n最大接続数:%dに再設定しました。\n", CONNECT_MAXMAX, CONNECT_MAXMIN, CONNECT_MAX);
         cfg->max_connection = CONNECT_MAX;      //最大接続数にデフォルトの値を設定
     }   
     fclose(fp);
