@@ -149,7 +149,6 @@ int server_receive_transmission(int socketid){
      if ( receive_filename(socketid , filename) == ERROR_RECEIVE_NAME){
           return NO_ERROR;
      }
-     printf("aaaiueoaaaiueo\n");
      error_message( transmission_filedata(socketid , filename, filedata) );
      
      return NO_ERROR;
