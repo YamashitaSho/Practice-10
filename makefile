@@ -1,6 +1,14 @@
 CFLAGS=-Wall
+LOADLIBES = -lm
 
-tcwebngin:main.o
-main.o:main.c client.o server.o config.o
+CC = gcc
+OBJS = main.o client.o server.o config.o
+
+tcwebngin:$(OBJS)
+	$(CC) -o $@ $(OBJS)
+
+.c.o:
+	$(CC) -c $<
+
 clean:
 	@rm -rf tcwebngin *.o
