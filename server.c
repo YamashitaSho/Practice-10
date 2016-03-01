@@ -7,7 +7,7 @@ server.cでやること
 接続が確立したら同時に10個まで子スレッドを作り、接続待機状態を維持する。
 clientからファイル名が送られてくるので、文字列ファイルを読み込んで内容を返信する。
 */
-threadinfo_t thread[CONNECT_MAXMAX+1]; 
+threadinfo_t thread_global[CONNECT_MAXMAX+1]; 
 
 //接続状態を監視しつつ待機し、接続があれば新しい子スレッドを作る。
 int server_main(){
@@ -22,25 +22,27 @@ int server_main(){
      server_setup(&listening_socket);
      printf("使用ポート:%d\n", port);
      while(1){
-          connection_number(thread);
           for (i = 0; i < cfg->max_connection+1 ; i++){
-               if (thread[i].state == -1){
+               if (thread_global[i].state == -1){
                     //ステータスがヒマだった通信用ソケットを使用して接続待機
-                    thread[i].socket = accept( listening_socket , (struct sockaddr *)&peer_sin , &len );
-                    if ( thread[i].socket == -1){
+                    thread_global[i].state = 0;                                      //スレッドのステータスを接続待ちに変える
+                    connection_number();
+                    thread_global[i].socket = accept( listening_socket , (struct sockaddr *)&peer_sin , &len );
+                    if ( thread_global[i].socket == -1){
                          error_message(ERROR_SOCKET_ACCEPT);
                     }
                     if ( i < cfg->max_connection){                                 //max_connectionを超えていない
-                         status_send(thread[i].socket, SERVER_OK, HEADER_LENGTH);  //ヘッダを送る:000(エラーなし)
+                         status_send(thread_global[i].socket, SERVER_OK, HEADER_LENGTH);  //ヘッダを送る:000(エラーなし)
                          printf("接続しました:%s\n",inet_ntoa(peer_sin.sin_addr));   //クライアントのIPアドレスを表示
-                         thread[i].state = 0;                                      //スレッドのステータスを接続待ちに変える
-                         pthread_create(&thread_id[i], NULL, (void *)connect_thread, &thread[i]); //スレッドを作る
+                         thread_global[i].state = 1;
+                         pthread_create(&thread_id[i], NULL, (void *)connect_thread, &thread_global[i]); //スレッドを作る
                          pthread_detach(thread_id[i]);                                            //スレッドの終了は待たない
                          break;
                     } else {                                                       //max_connectionを超えている
-                         status_send(thread[i].socket, SERVER_SERVICE_UNAVAILABLE, HEADER_LENGTH);//ヘッダを送る:503(アクセス過多)
+                         status_send(thread_global[i].socket, SERVER_SERVICE_UNAVAILABLE, HEADER_LENGTH);//ヘッダを送る:503(アクセス過多)
                          printf("接続過多により接続を拒否します:%s\n",inet_ntoa(peer_sin.sin_addr));
-                         err = close(thread[i].socket);                            //通信用ソケットを破棄
+                         thread_global[i].state = -1;                                     //ステータスをヒマに戻す
+                         err = close(thread_global[i].socket);                            //通信用ソケットを破棄
                          if (err == -1){
                               error_message(ERROR_SOCKET_CLOSE);
                          }
@@ -65,7 +67,7 @@ int server_setup(int *listening_socket){
      struct addrinfo *rp;
      
      for (i=0 ; i < cfg->max_connection+1 ; i++){
-          thread[i].state = -1;                     //初期化
+          thread_global[i].state = -1;                     //初期化
      }
      memset(&hints,0,sizeof(hints));
      hints.ai_family = AF_INET;
@@ -105,18 +107,18 @@ int server_setup(int *listening_socket){
      }
      return 0;
 }
-//接続数を表示
-void connection_number(threadinfo_t *thread){
+//接続数を表示 / global変数のthreadを参照しています
+void connection_number(){
      int state_check;
-     //thread[i].state(1:接続中 0:接続待機 -1:ヒマ)
+     //thread_global[i].state(1:接続中 0:接続待機 -1:ヒマ)
      state_check = 0;
-     for (int i = 0 ; i < cfg->max_connection ; i++){
-          if (thread[i].state != -1 ){
+     for (int i = 0 ; i < cfg->max_connection+1 ; i++){
+          if (thread_global[i].state != -1 ){
                state_check ++;
           }
-//   printf("%d.",thread[i].state);
+//   printf("%d.",thread_global[i].state);
      }
-     printf("接続数:(%d/%d)\n",state_check,cfg->max_connection);
+     printf("接続数:(%d/%d)\n", state_check, cfg->max_connection);
 }
 
 //子スレッドでの処理
@@ -124,18 +126,21 @@ void connect_thread(threadinfo_t *thread){
      int err;
      
      while (1){
-          thread->state = 1;                                //スレッドのステータスを接続中に変える
-          server_receive_transmission(thread->socket);      //データのやりとり
-
+          err = server_receive_transmission(thread->socket);      //データのやりとり
+          if (err != NO_ERROR){
+               printf("クライアントがいなくなったからスレッドが消えます。\n");
+               thread->state = -1;
+               break;                                       //クライアントが落ち
+          } 
           err = close(thread->socket);
           if (err == -1){
                error_message(ERROR_SOCKET_CLOSE);
           }
           thread->state = -1;                               //スレッドのステータスを解放済みに変える
-          printf("接続が切れました。\n");
+          printf("正常に通信が完了しました。\n");
           break;
      }
-     connection_number(thread);
+     connection_number();
 }
 
 //送受信
@@ -147,7 +152,7 @@ int server_receive_transmission(int socketid){
      memset(filename,'\0',256);
      
      if ( receive_filename(socketid , filename) == ERROR_RECEIVE_NAME){
-          return NO_ERROR;
+          return ERROR_RECEIVE_NAME;
      }
      error_message( transmission_filedata(socketid , filename, filedata) );
      
