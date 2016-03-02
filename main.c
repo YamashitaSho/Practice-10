@@ -63,47 +63,51 @@ void error_message(int err){
         break;
         
       case ERROR_ARG_UNKNOWN:
-        printf("モード指定が不正です。\n");
+        printf("モード指定が不正です\n");
         exit(0);
         
       case ERROR_ARG_TOO_MANY:
-        printf("モード指定が多すぎます。\n");
+        printf("モード指定が多すぎます\n");
         exit(0);
         
       case ERROR_ARG_SEVERAL_MODES:
-        printf("モードが複数指定されています。\n");
+        printf("モードが複数指定されています\n");
         exit(0);
         
       case ERROR_SOCKET:
-        printf("ソケットの作成に失敗しました。\n");
+        printf("ソケットの作成に失敗しました\n");
         exit(0);
         
       case ERROR_SOCKET_OPTION:
-        printf("ソケットオプションの設定に失敗しました。\n");
+        printf("ソケットオプションの設定に失敗しました\n");
         exit(0);
         
       case ERROR_SOCKET_BIND:
-        printf("ソケットのバインドに失敗しました。\n");
+        printf("ソケットのバインドに失敗しました\n");
         exit(0);
         
       case ERROR_SOCKET_ACCEPT:
-        printf("ソケット通信の受付に失敗しました。\n");
+        printf("ソケット通信の受付に失敗しました\n");
         exit(0);
         
       case ERROR_SOCKET_CLOSE:
-        printf("ソケットのクローズに失敗しました。\n");
+        printf("ソケットのクローズに失敗しました\n");
         exit(0);
         
       case ERROR_HOST_UNKNOWN:
-        printf("ホスト名を解決できませんでした。\n");
+        printf("ホスト名を解決できませんでした\n");
         exit(0);
         
       case ERROR_CONNECT:
-        printf("サーバに接続できませんでした。");
+        printf("サーバに接続できませんでした");
         break;
         
       case ERROR_FILENOTFOUND:
-        printf("ファイルがありません。\n");
+        printf("ファイルがありません\n");
+        break;
+        
+      case ERROR_TRANSMISSION_FAILED:
+        printf("ファイル送信失敗\n");
         break;
         
       case 503:
@@ -111,7 +115,7 @@ void error_message(int err){
         break;
         
       default:
-        printf("不正なエラーです。\nエラーコード:%d\n" , err);
+        printf("不正なエラーです\nエラーコード:%d\n" , err);
         exit(0);
     }
 }
