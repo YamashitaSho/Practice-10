@@ -21,14 +21,14 @@ int client_main(int debugmode){
     while(1){
         if ( mode == CLIENT_GET ){              //ファイル取得
             if ( cfg->host[0] == '\0' ){
-                printf("接続先が登録されていません。\nEnterキーでメニューに戻ります。\n");
+                printf("接続先が登録されていません\nEnterキーでメニューに戻ります\n");
                 fflush(stdin);
                 getc(stdin);
                 continue;
             }
-            err = client_receive_transmission(cfg);
+            err = client_connect(cfg);
             if ( err == ERROR_CONNECT ){
-                printf("サーバに接続できませんでした。\n接続先の受信プログラムが起動していない可能性があります。\nEnterキーでメニューに戻ります。\n");
+                printf("サーバに接続できませんでした\n接続先の受信プログラムが起動していない可能性があります\nEnterキーでメニューに戻ります\n");
                 fflush(stdin);
                 getc(stdin);
                 continue;
@@ -38,11 +38,11 @@ int client_main(int debugmode){
             }
         } else if ( mode == CLIENT_CONFIG ){    //設定
             if ( cfg->host[0] == '\0' ){            //接続先がないので入力させる
-                printf("接続先を入力し、Enterキーを押してください。\n>>");
+                printf("接続先を入力し、Enterキーを押してください\n>>");
                 new_config();
                 config_load();
             } else {                                //接続先を表示し、入力を求める。
-                printf("現在設定されている接続先は%sです。\n上書きしない場合は、Enterキーのみを入力してください。\n上書きする場合は接続先を入力し、Enterキーを入力してください。\n>>",cfg->host);
+                printf("現在設定されている接続先は%sです\n上書きしない場合は、Enterキーのみを入力してください\n上書きする場合は接続先を入力し、Enterキーを入力してください\n>>",cfg->host);
                 new_config();
                 config_load();
             }
@@ -70,7 +70,7 @@ void input_a_line(char *inputline){
     char input[256];
     char *newline;                                  //改行検出用
     
-    printf("\n読み込むファイル名を入力してください。>>");
+    printf("\n読み込むファイル名を入力してください>>");
     fflush(stdin);
     fgets(input , 255 , stdin);
     
@@ -81,19 +81,13 @@ void input_a_line(char *inputline){
     strncpy(inputline , input , 255);
 }
 
-//接続、受送信
-int client_receive_transmission(config_t *cfg){
+int client_connect(config_t *cfg){
     struct sockaddr_in client_addr;                 //ネットワーク設定
     struct in_addr servhost;                        //サーバーのIP格納
-    int port = atoi(DEFAULT_PORT);                        //ポート番号
+    int port = atoi(DEFAULT_PORT);                  //ポート番号
     int ret;                                        //返り値の一時保存
     int connecting_socket = 0;                      //接続時のソケットディスクリプタ
-    char filename[256];                             //取得リクエストを送るファイル名
-    char receive_data[FILESIZEMAX];                    //受け取るデータ
-    int filesize;                                   //受け取るデータのサイズ
     FILE *socketfp;                                 //接続ストリームを受け取るファイルポインタ
-
-    memset(receive_data,'\0',FILESIZEMAX);
     
     //ソケットを作成
     if ( (connecting_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -116,28 +110,15 @@ int client_receive_transmission(config_t *cfg){
     if ( ret < 0 ){
         return ERROR_CONNECT;
     }
-    socketfp = fdopen(connecting_socket,"rb");            //バイナリモード読み取り専用で受信データを開く
-    ret = receive_status(socketfp, HEADER_LENGTH);
-    if ( ret == 503 ){
-        close(connecting_socket); 
-        return 503;
+    ret = client_receive_transmission(connecting_socket);
+    if ( ret != NO_ERROR ){
+        return ret;
     }
     
-    printf("サーバーに接続しました。\n");
-    transmission_filename(connecting_socket, filename);
-    ret = receive_status(socketfp, STATUS_LENGTH);
-    if (ret == 200){
-        filesize = receive_status(socketfp, FILESIZE_LENGTH);
-        receive_filedata(socketfp, receive_data, filesize, filename);
-    } else if (ret == 404){
-        printf("FILE NOT FOUND\n");
-    }
-    
-    close( connecting_socket );
-
+    close(connecting_socket);
     return NO_ERROR;
-
 }
+
 //ホスト名を解決
 int address_resolution(struct in_addr *servhost){
     struct addrinfo hint;                           //getaddrinfoを使うためにaddrinfo型の構造体を宣言
@@ -152,9 +133,45 @@ int address_resolution(struct in_addr *servhost){
     if ( getaddrinfo(cfg->host, NULL, &hint, &result) != 0 ) {
         return 0;
     }
-    servhost->s_addr=((struct sockaddr_in *)(result->ai_addr))->sin_addr.s_addr;
+    servhost->s_addr = ((struct sockaddr_in *)(result->ai_addr))->sin_addr.s_addr;
     freeaddrinfo(result);
     return 1;
+}
+
+//接続、受送信
+int client_receive_transmission(int connecting_socket){
+    int ret;
+    char filename[256];                             //取得リクエストを送るファイル名
+    char **receive_datap;                           //受け取るデータのポインタのポインタ
+    char *receive_data;                             //受け取るデータのポインタ
+    int filesize;                                   //受け取るデータのサイズ
+    FILE *socketfp;
+    
+    receive_datap = &receive_data;
+    socketfp = fdopen(connecting_socket,"rb");            //バイナリモード読み取り専用で受信データを開く
+    
+    ret = receive_status(socketfp, STATUS_LENGTH);
+    if ( ret == 503 ){
+        close(connecting_socket); 
+        return 503;
+    }
+    
+    printf("サーバーに接続しました\n");
+    transmission_filename(connecting_socket, filename);
+    ret = receive_status(socketfp, STATUS_LENGTH);
+    if (ret == STATUS_OK){
+        filesize = receive_status(socketfp, FILESIZE_LENGTH);
+        ret = receive_filedata(socketfp, receive_datap, filesize, filename); //ここでreceive_datapにmalloc
+        if ( ret == NO_ERROR ){
+            file_save(receive_datap,filesize,filename);                      //ここでfree(receive_datap)
+        }
+    } else if (ret == STATUS_NOTFOUND){
+        printf("ファイルが見つかりませんでした\n");
+    } else if (ret == STATUS_PAYLOADTOOLARGE){
+        printf("PAY LOAD TOO LARGE\n");
+    }
+
+    return NO_ERROR;
 }
 //ステータスをlength長受信
 int receive_status(FILE *fp, int length){
@@ -171,14 +188,14 @@ int receive_status(FILE *fp, int length){
         }
     } while (index != length);
     
-    //受信したヘッダの表示
+    //受信したステータスの表示
 /*    printf("STATUS:");
     for (int i = 0 ; i < length ; i++){
         if (status[i] == 0){printf("!");}
         else{printf("%c",status[i]);}
     }
-    printf("\n");
-    printf("atoi(status):%d\n",atoi(status));*/
+    printf("\n");*/
+    
     return atoi(status);
 }
 
@@ -193,16 +210,33 @@ int transmission_filename(int socketid, char *filename){
     do{
         buf_len += write( socketid , (filename+buf_len) , 255 );
     } while ( filename[buf_len] != '\0' );
-    printf("ファイル名:%sを送信しました。\n",filename);
+    printf("ファイル名:%sを送信しました\n",filename);
     return NO_ERROR;
 }
 
 //ファイル受信
-int receive_filedata(FILE *receive_fp, char *receive_data, int filesize, char *filename){
+int receive_filedata(FILE *receive_fp, char **receive_data, int filesize, char *filename){
     char bufc;                                                  //ソケット受信用バッファ
     int size_t;                                                 //受信したかどうかのバッファ
     int index = 0;                                              //受信した合計量
-    
+
+    *receive_data = (char *)calloc(filesize, sizeof(char));
+    if ( !(*receive_data) ){
+          printf("ファイル受信に必要なメモリがありません\n");
+          return ERROR_OUTOFMEMORY;
+    }
+    //ファイルの受信
+    do{
+        if ( (size_t = fread(&bufc, 1, 1, receive_fp)) > 0 ){
+           (*receive_data)[index] = bufc;
+           index += size_t;
+        }
+    } while (index != filesize);
+    printf("%dバイト受信しました\n", filesize);
+
+    return NO_ERROR;
+}
+int file_save(char **receive_data, int filesize, char *filename){
     int i = 1;                                                  //ファイル検索における通し番号管理に使用(1から始める)
     char *extensionp = memchr(filename, '.', strlen(filename)); //拡張子開始位置のポインタ
     const char dir[12] = SAVE_DIRECTORY;
@@ -219,17 +253,7 @@ int receive_filedata(FILE *receive_fp, char *receive_data, int filesize, char *f
     memcpy(extension, extensionp, strlen(filename)-(extensionp-filename));
     memcpy(filename_name, filename, extensionp-filename);
     
-    //ファイルの受信
-    do{
-        if ( (size_t = fread(&bufc, 1, 1, receive_fp)) > 0 ){
-           receive_data[index] = bufc;
-           index += size_t;
-        }
-    } while (index != filesize);
-    printf("%dバイト受信しました。\n", filesize);
-    
     dir_make(SAVE_DIRECTORY);                   //SAVE_DIRECTORYフォルダがあるかどうか確認し、なければ作っておく
-    //保存ファイル名の決定
     sprintf(filename_dir,"%s/%s",dir,filename); 
     save_fp = fopen(filename_dir, "r");         //とりあえずdir/filenameを開いてみる
     
@@ -245,12 +269,14 @@ int receive_filedata(FILE *receive_fp, char *receive_data, int filesize, char *f
     fclose(save_fp);                            //ファイル名が確定したので読み込みモードでは閉じる
     
     save_fp = fopen(filename_dir,"w");
-    fwrite(receive_data, filesize, 1, save_fp);
-    printf("%sに保存しました。", filename_dir);
+    fwrite(*receive_data, filesize, 1, save_fp);
+    printf("%sに保存しました", filename_dir);
+    
     fclose(save_fp);
+    free(*receive_data);
+    
     return NO_ERROR;
 }
-
 //directoryフォルダの存在を判定 なければ作る
 void dir_make(char *directory){
     DIR *dir;

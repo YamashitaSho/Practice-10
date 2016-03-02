@@ -25,7 +25,7 @@ int config_load(){
         config_param(configfile, CONFIG_SYMBOL_MAXC);
     }
     if ( (cfg->max_connection < CONNECT_MAXMIN) || (cfg->max_connection > CONNECT_MAXMAX) ){
-        printf("最大接続数は%dから%dの範囲で設定してください。\n最大接続数:%dに再設定しました。\n", CONNECT_MAXMAX, CONNECT_MAXMIN, CONNECT_MAX);
+        printf("最大接続数は%dから%dの範囲で設定してください\n最大接続数:%dに再設定しました\n", CONNECT_MAXMAX, CONNECT_MAXMIN, CONNECT_MAX);
         cfg->max_connection = CONNECT_MAX;      //最大接続数にデフォルトの値を設定
     }   
     fclose(fp);
@@ -83,7 +83,7 @@ int new_config(){
     fgets(input , 255 , stdin);
     
     if (input[0] == '\n') {
-        printf("ファイルは変更されませんでした。");
+        printf("ファイルは変更されませんでした");
         return 1;
     } else {
         newline = memchr(input , '\n', 255);        //fileの終端にある改行コードを検出する
@@ -91,7 +91,7 @@ int new_config(){
         fp = fopen(CONFIG_FILE,"w");
         sprintf(host,"host=%s\nmax_connection=%d",input,cfg->max_connection);
         fputs(host,fp);
-        printf("接続先が%sに変更されました。",input);
+        printf("接続先が%sに変更されました",input);
         fclose(fp);
     }
     return 0;

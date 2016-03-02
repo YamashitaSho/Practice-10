@@ -26,18 +26,15 @@
 #define CONFIG_SYMBOL_MAXC "max_connection"
 #define DEFAULT_PORT "8888"
 #define CONNECT_MAX 10                  //デフォルト最大接続数
-#define CONNECT_MAXMAX 100               //最大最大接続数
-#define CONNECT_MAXMIN 1                  //最小最大接続数
-#define FILESIZEMAX 100000
+#define CONNECT_MAXMAX 100              //最大最大接続数
+#define CONNECT_MAXMIN 1                //最小最大接続数
 #define FILESIZE_LENGTH 9               //ヘッダにおけるファイルサイズの桁数
 
-#define HEADER_LENGTH 4                 //サーバーからクライアントへ最初に送るヘッダーの長さ
-#define SERVER_OK "200\0"               //サーバーOK
-#define SERVER_SERVICE_UNAVAILABLE "503\0"   //503エラー（接続過多)
-
 #define STATUS_LENGTH 4
-#define STATUS_OK "200\0"               //OK
-#define STATUS_NOTFOUND "404\0"         //NOTFOUND
+#define STATUS_OK 200                   //OK
+#define STATUS_PAYLOADTOOLARGE 413      //処理できないデータ量のリクエストである
+#define STATUS_NOTFOUND 404             //NOTFOUND
+#define STATUS_SERVICE_UNAVAILABLE 503  //503エラー（接続過多)
 
 #define NO_ERROR 0
 #define ERROR_ARG_UNKNOWN 1001          //不明な引数
@@ -55,6 +52,8 @@
 #define ERROR_HOST_UNKNOWN 2009         //ホスト名が解決できない
 #define CONFIG_NOTFOUND 2010            //コンフィグファイルがない
 #define ERROR_RECEIVE_NAME 2010         //ファイル名が受信できない
+#define ERROR_TRANSMISSION_FAILED 2011  //ファイル送信失敗
+#define ERROR_OUTOFMEMORY 2012          //メモリ不足によるファイル受信失敗
 
 #define ERROR_FILENOTFOUND 3001         //ファイルが見つからない
 
@@ -104,21 +103,27 @@ int server_main();
 int server_setup(int *listening_socket);
 void connection_number();
 void connect_thread(threadinfo_t *thread);
+
 int server_receive_transmission(int socketid);
 int receive_filename(int socketid, char *filename);
-int transmission_filedata(int socketid, char *filename, char *filedata);
-void status_send(int socketid, char *status, int length);
+int load_filedata(char *filename, char **filedata, int *filesize);
+int transmission_filedata(int socketid, char **filedata, int filesize);
+int status_send(int socketid, int status, int length);
 
 //client.c
 int client_main(int debugmode);
 char get_menu();
 void input_a_line(char *inputline);
 
+int client_connect(config_t *cfg);
 int address_resolution(struct in_addr *servhost);
-int client_receive_transmission();
+
+int client_receive_transmission(int connecting_socket);
 int transmission_filename(int socketid, char *filename);
 int receive_status(FILE *fp, int length);
-int receive_filedata(FILE *fp, char *filedata, int filesize, char *filename);
+int receive_filedata(FILE *fp, char **filedata, int filesize, char *filename);
+
+int file_save(char **receive_data, int filesize, char *filename);
 void dir_make(char *dir);
 
 //config.c
